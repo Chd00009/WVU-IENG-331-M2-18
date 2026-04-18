@@ -10,3 +10,6 @@ dependencies = [
     "pyarrow",
     "pandas"
 ]
+
+[project.scripts]
+wvu-ieng-331-m2-18 = "wvu_ieng_331_m2_18.pipeline:main"

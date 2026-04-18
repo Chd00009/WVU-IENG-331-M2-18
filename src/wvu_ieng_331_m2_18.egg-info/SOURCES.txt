@@ -7,5 +7,6 @@ src/wvu_ieng_331_m2_18/validation.py
 src/wvu_ieng_331_m2_18.egg-info/PKG-INFO
 src/wvu_ieng_331_m2_18.egg-info/SOURCES.txt
 src/wvu_ieng_331_m2_18.egg-info/dependency_links.txt
+src/wvu_ieng_331_m2_18.egg-info/entry_points.txt
 src/wvu_ieng_331_m2_18.egg-info/requires.txt
 src/wvu_ieng_331_m2_18.egg-info/top_level.txt
