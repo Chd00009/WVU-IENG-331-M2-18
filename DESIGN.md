@@ -2,34 +2,80 @@
 
 ## Parameter Flow
 
-Trace how a command-line argument (e.g., `--seller-state SP`) travels through your code:
-which function parses it, how it reaches the queries module, and how it changes the SQL that runs.
-Include the actual function names and parameter names from your code.
+Command-line arguments are parsed in the `main()` function inside `pipeline.py` using the `argparse` library. For example, the `--seller-id` parameter is defined and parsed as:
+
+```python
+parser.add_argument("--seller-id", default=None)
+```
+After parsing, all arguments are stored in the args object. For example, args.seller_id holds the value passed by the user.
+
+This value is then passed into the data access layer. In pipeline.py, the function call:
+df_seller = get_seller_scorecard(args.db_path, args.seller_id)
+sends the parameter into the queries.py module. Inside queries.py, the value is passed as a parameter when executing the SQL query.
+
+This design allows command-line inputs to directly influence the database query results without modifying SQL code, making the pipeline flexible and reusable.
 
 ## SQL Parameterization
 
-Pick one of your `.sql` files and explain:
-- What the raw SQL looks like (with `$1`, `$2` placeholders)
-- How `queries.py` reads the file and passes Python values as parameters
-- Why parameterized queries are used instead of f-strings
-- Why SQL lives in `.sql` files rather than inline in Python
+An example SQL file is seller_scorecard.sql, which contains a query using parameter placeholders:
+SELECT *
+FROM sellers
+WHERE seller_id = $1;
+The $1 represents a parameter that will be replaced at runtime.
+
+In queries.py, the SQL file is read using pathlib, and then executed like this:
+conn.execute(sql, [seller_id])
+The value of seller_id is passed safely into the query.
+
+Parameterized queries are used instead of f-strings or string concatenation because they prevent SQL injection and ensure that user input does not alter the structure of the query.
+
+SQL is stored in .sql files instead of inside Python code to improve organization and maintainability. This keeps query logic separate from application logic and makes it easier to update queries without modifying Python functions.
 
 ## Validation Logic
 
-For each validation check in `validation.py`, explain:
-- What it checks and why that check matters
-- What happens if it fails (halt vs. warning)
-- How you chose your thresholds (e.g., why 1,000 rows as a minimum)
+Validation is implemented in the validate_database() function in validation.py.
+
+The main validation step checks that all required tables exist in the database. These include:
+
+orders
+order_items
+customers
+products
+sellers
+geolocation
+order_payments
+order_reviews
+category_translation
+
+This check is important because all queries depend on these tables. If any are missing, the pipeline would fail during execution.
+
+If any required tables are missing, the function logs a warning and returns False. The pipeline then stops execution to prevent invalid analysis.
+
+The validation also logs a message confirming that the dataset schema is valid and that the pipeline does not rely on fixed row counts or date ranges. This ensures compatibility with the holdout dataset, which may contain more data.
+
+No strict row count thresholds are enforced because the dataset size may change. Instead of failing on different sizes, the pipeline is designed to adapt to varying amounts of data.
 
 ## Error Handling
 
-Pick 2 specific `try/except` blocks in your code and explain:
-- What exception you catch and why that specific type
-- What the code does when the exception is raised
-- What would happen to the user if you used a bare `except:` instead
+One example of error handling is in validation.py:
+try:
+    conn = duckdb.connect(db_path)
+except Exception as e:
+    logger.error(f"Validation failed: {e}")
+    
+This catches errors related to connecting to the database, such as missing or invalid files. If an error occurs, the pipeline logs the issue and stops safely.
+
+Another example is during query execution in queries.py. If a query fails (for example, due to invalid SQL or missing tables), DuckDB raises an exception that prevents incorrect data from being returned.
+
+Specific exceptions are used instead of a bare except: to avoid hiding errors. A bare except: could catch unrelated issues and make debugging difficult. By handling errors explicitly, the pipeline provides clearer feedback to the user.
 
 ## Scaling & Adaptation
 
-Answer both:
-1. If the Olist dataset grew to 10 million orders, what part of your pipeline would break or slow down first? What would you change?
-2. If you needed to add a third output format (e.g., a JSON API response), where in your code would you add it and what functions would you modify?
+If the dataset grew to 10 million orders, the main performance bottleneck would likely be query execution and data conversion, especially when converting large datasets to pandas for visualization. This could slow down the pipeline. To improve performance, I would:
+Optimize SQL queries to reduce data size before returning results
+Avoid converting large datasets to pandas when possible
+Use aggregation in SQL instead of processing large datasets in Python
+To add a third output format (such as JSON), I would modify the output section of pipeline.py. After generating the main DataFrame, I would add a new export step such as:
+df_abc.write_json("output/data.json")
+
+This would be added alongside the existing CSV and Parquet outputs. Because the pipeline separates data processing from output generation, adding new formats is straightforward.
