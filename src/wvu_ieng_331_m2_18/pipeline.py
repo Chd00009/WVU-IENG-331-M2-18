@@ -13,7 +13,12 @@ from wvu_ieng_331_m2_18.queries import (
 def main():
     parser = argparse.ArgumentParser(description="ETL Pipeline")
 
-    parser.add_argument("--db-path", required=True, help="Path to DuckDB database")
+    parser.add_argument(
+    "--db-path",
+    type=str,
+    default="data/olist.duckdb",
+    help="Path to DuckDB database (default: data/olist.duckdb)"
+)
     parser.add_argument("--seller-id", default=None, help="Optional seller filter")
     parser.add_argument("--start-date", default=None, help="Optional start date filter")
     parser.add_argument("--end-date", default=None, help="Optional end date filter")
