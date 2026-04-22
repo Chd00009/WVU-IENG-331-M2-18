@@ -48,6 +48,6 @@ def validate_database(db_path: str) -> bool:
         conn.close()
         return True
 
-    except Exception as e:
+except (FileNotFoundError, OSError, duckdb.Error) as e:
         logger.error(f"Validation failed: {e}")
         return False
